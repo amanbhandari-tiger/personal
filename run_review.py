@@ -5,7 +5,7 @@ import sys
 import requests
 
 OPENROUTER_API_KEY = (os.getenv("OPENROUTER_API_KEY") or "").strip()
-MODEL_NAME = (os.getenv("OPENROUTER_MODEL") or "google/gemini-2.5-flash").strip()
+MODEL_NAME = (os.getenv("OPENROUTER_MODEL") or "google/gemini-2.5-flash:free").strip()
 
 
 def load_file(path):
