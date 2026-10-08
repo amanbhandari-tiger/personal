@@ -49,8 +49,8 @@ def main():
 
     # Payload with OpenRouter server-side fallback models array
     payload = {
-        "models": [
-            "google/gemma-4-31b-it:free",
+        "model": "google/gemma-4-31b-it:free",  # Required by API: Primary model
+        "models": [  # Optional: Fallback models if primary fails
             "liquid/lfm-2.5-2.6b:free",
             "nvidia/nemotron-3.5-lightning:free",
             "cohere/north-mini-code:free",
