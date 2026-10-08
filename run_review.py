@@ -5,11 +5,10 @@ import sys
 import requests
 import urllib3
 
-# Suppress SSL warnings if verify=False is used locally
+# Suppress SSL warnings for local environment testing
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 OPENROUTER_API_KEY = (os.getenv("OPENROUTER_API_KEY") or "").strip()
-MODEL_NAME = (os.getenv("OPENROUTER_MODEL") or "cohere/north-mini-code:free").strip()
 
 
 def load_file(path):
@@ -27,7 +26,7 @@ def main():
     skill_content = load_file("skill/code-reviewer/skill.md")
     if not skill_content:
         raise FileNotFoundError(
-            "Could not find 'skill/code-reviewer/skill.md'. Ensure the path is correct."
+            "Could not find 'skill/code-reviewer/skill.md'. Ensure the file path is correct."
         )
 
     # 2. Collect Python source files
@@ -48,32 +47,42 @@ def main():
         "X-Title": "Automated AI Code Reviewer",
     }
 
+    # Payload with OpenRouter server-side fallback models array
     payload = {
-        "model": MODEL_NAME,
+        "models": [
+            "google/gemma-4-31b-it:free",
+            "liquid/lfm-2.5-2.6b:free",
+            "nvidia/nemotron-3.5-lightning:free",
+            "cohere/north-mini-code:free",
+        ],
         "messages": [
             {
                 "role": "system",
-                "content": "You are an expert static analyzer following skill.md strictly.",
+                "content": (
+                    "You are an expert static analyzer following skill.md strictly. "
+                    "Output ONLY the final markdown code review report directly without conversational preamble or internal reasoning logs."
+                ),
             },
             {"role": "user", "content": full_prompt},
         ],
         "temperature": 0.1,
-        # "max_tokens": 4000,
-        "max_tokens": 8000,
-        "reasoning": {
-            "max_tokens": 0
-        },  # to direct OpenRouter not to waste tokens on reasoning logs
+        "max_tokens": 4000,
     }
 
-    print(f"Sending code to OpenRouter ({MODEL_NAME}) for analysis...")
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=300,
-        verify=False,  # Set to True on GitHub Actions, False locally if hitting SSL cert issues
-    )
-    response.raise_for_status()
+    print("Sending code to OpenRouter for analysis...")
+
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=180,
+            verify=False,  # Set to False to bypass local SSL proxy issues
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as err:
+        print(f"❌ API Request failed: {err}")
+        sys.exit(1)
 
     result = response.json()
 
@@ -82,11 +91,11 @@ def main():
     if "choices" in result and len(result["choices"]) > 0:
         review_output = result["choices"][0].get("message", {}).get("content")
 
-    # Fallback if OpenRouter returned None or an unexpected payload structure
-    if not review_output:
+    # Fallback check if response payload is empty or invalid
+    if not review_output or not str(review_output).strip():
         print("⚠️ Warning: OpenRouter returned an empty message payload.")
         print("Raw API Response:", result)
-        review_output = f"# Code Review Output\n\nUnable to retrieve review from model `{MODEL_NAME}`.\n\nRaw Response:\n```json\n{result}\n```"
+        sys.exit(1)
 
     # 4. Save review output
     os.makedirs("output", exist_ok=True)
@@ -98,8 +107,8 @@ def main():
 
     # 5. BLOCK PR MERGE ON FAILURE
     if (
-        "BUILD STATUS: FAIL" in review_output.upper()
-        or "**BUILD STATUS:** `FAIL`" in review_output.upper()
+        "BUILD STATUS: FAIL" in str(review_output).upper()
+        or "**BUILD STATUS:** `FAIL`" in str(review_output).upper()
     ):
         print(
             "❌ AI Review failed with critical issues. Failing workflow step to block PR merge."
