@@ -9,7 +9,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 OPENROUTER_API_KEY = (os.getenv("OPENROUTER_API_KEY") or "").strip()
-MODEL_NAME = (os.getenv("OPENROUTER_MODEL") or "openrouter/free").strip()
+MODEL_NAME = (os.getenv("OPENROUTER_MODEL") or "cohere/north-mini-code:free").strip()
 
 
 def load_file(path):
@@ -58,7 +58,11 @@ def main():
             {"role": "user", "content": full_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 4000,
+        # "max_tokens": 4000,
+        "max_tokens": 8000,
+        "reasoning": {
+            "max_tokens": 0
+        },  # to direct OpenRouter not to waste tokens on reasoning logs
     }
 
     print(f"Sending code to OpenRouter ({MODEL_NAME}) for analysis...")
