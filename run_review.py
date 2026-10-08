@@ -3,9 +3,13 @@ import os
 import sys
 
 import requests
+import urllib3
+
+# Suppress SSL warnings if verify=False is used locally
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 OPENROUTER_API_KEY = (os.getenv("OPENROUTER_API_KEY") or "").strip()
-MODEL_NAME = (os.getenv("OPENROUTER_MODEL") or "google/gemini-2.5-flash:free").strip()
+MODEL_NAME = (os.getenv("OPENROUTER_MODEL") or "openrouter/free").strip()
 
 
 def load_file(path):
@@ -63,17 +67,28 @@ def main():
         headers=headers,
         json=payload,
         timeout=300,
+        verify=False,  # Set to True on GitHub Actions, False locally if hitting SSL cert issues
     )
     response.raise_for_status()
 
     result = response.json()
-    review_output = result["choices"][0]["message"]["content"]
+
+    # Safely extract message content
+    review_output = None
+    if "choices" in result and len(result["choices"]) > 0:
+        review_output = result["choices"][0].get("message", {}).get("content")
+
+    # Fallback if OpenRouter returned None or an unexpected payload structure
+    if not review_output:
+        print("⚠️ Warning: OpenRouter returned an empty message payload.")
+        print("Raw API Response:", result)
+        review_output = f"# Code Review Output\n\nUnable to retrieve review from model `{MODEL_NAME}`.\n\nRaw Response:\n```json\n{result}\n```"
 
     # 4. Save review output
     os.makedirs("output", exist_ok=True)
     report_path = "output/code_review_report.md"
     with open(report_path, "w", encoding="utf-8") as file:
-        file.write(review_output)
+        file.write(str(review_output))
 
     print(f"Review report successfully generated at: {report_path}")
 
