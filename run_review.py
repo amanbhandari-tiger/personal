@@ -51,9 +51,8 @@ def main():
     payload = {
         "model": "google/gemma-4-31b-it:free",  # Required by API: Primary model
         "models": [  # Optional: Fallback models if primary fails
-            "liquid/lfm-2.5-2.6b:free",
             "nvidia/nemotron-3.5-lightning:free",
-            "cohere/north-mini-code:free",
+            "meta-llama/llama-3.2-3b-instruct:free",
         ],
         "messages": [
             {
@@ -68,7 +67,7 @@ def main():
             {"role": "user", "content": full_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 4000,
+        "max_tokens": 8000,
     }
 
     print("Sending code to OpenRouter for analysis...")
