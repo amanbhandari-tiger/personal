@@ -1,15 +1,23 @@
-import xml.etree.ElementTree as ET
+"""Module for secure XML parsing and user command evaluation."""
 
-# Security Flaw: Hardcoded API Key
-PAYMENT_GATEWAY_KEY = "sk_live_12345678901234567890"
+import ast
+import os
+from typing import Any
+
+import defusedxml.ElementTree as ET
+
+# Fetch secrets securely from environment variables
+PAYMENT_GATEWAY_KEY = os.environ.get("PAYMENT_GATEWAY_KEY", "")
 
 
-def parse_user_xml(xml_string):
-    # Security Flaw: Insecure XML parser vulnerable to XXE
-    tree = ET.fromstring(xml_string)
-    return tree
+def parse_user_xml(xml_string: str) -> ET.Element:
+    """Parse XML string safely using defusedxml to prevent XXE attacks."""
+    return ET.fromstring(xml_string)
 
 
-def execute_user_command(user_input):
-    # Security Flaw: Insecure eval call
-    return eval(user_input)
+def execute_user_command(user_input: str) -> Any:
+    """Safely evaluate literal Python expressions using ast.literal_eval."""
+    try:
+        return ast.literal_eval(user_input)
+    except (ValueError, SyntaxError) as err:
+        raise ValueError("Invalid or unsafe literal command provided.") from err
