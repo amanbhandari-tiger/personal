@@ -60,7 +60,9 @@ def main():
                 "role": "system",
                 "content": (
                     "You are an expert static analyzer following skill.md strictly. "
-                    "Output ONLY the final markdown code review report directly without conversational preamble or internal reasoning logs."
+                    "Output ONLY the final raw markdown code review report. "
+                    "DO NOT use tool calls, function calls, or special tags like <|tool_call_start|>. "
+                    "Provide the markdown text directly."
                 ),
             },
             {"role": "user", "content": full_prompt},
