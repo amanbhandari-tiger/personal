@@ -1,40 +1,42 @@
-import sys
+"""User authentication and credential validation testing module."""
+
 import os
+import secrets
 import sqlite3
-import hashlib
+from typing import Optional
 
-# SECURITY ISSUE: Hardcoded sensitive credentials / API key
-DATABASE_PASSWORD = "SuperSecretPassword123!"
-API_SECRET_KEY = "sk-live-998877665544332211"
+DATABASE_PASSWORD = os.environ.get("DATABASE_PASSWORD", "")
+API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "")
 
-def authenticate_user(username, password):
-    # CODE QUALITY ISSUE: Bare except block swallowing all errors silently
+
+def authenticate_user(username: str, password: str) -> Optional[bool]:
+    """Authenticate user credentials safely using parameterized database queries."""
     try:
-        conn = sqlite3.connect("users.db")
-        cursor = conn.cursor()
-
-        # SECURITY ISSUE: SQL Injection vulnerability via string concatenation
-        query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'"
-        cursor.execute(query)
-
-        user = cursor.fetchone()
-
-        # RESOURCE ISSUE: Database connection is never closed
-        if user:
-            return True
-        else:
-            return False
-    except:
+        # Use context manager to ensure DB connections close automatically
+        with sqlite3.connect("users.db") as conn:
+            cursor = conn.cursor()
+            # Parameterized query prevents SQL Injection
+            query = "SELECT * FROM users WHERE username = ? AND password = ?"
+            cursor.execute(query, (username, password))
+            user = cursor.fetchone()
+            return bool(user)
+    except sqlite3.Error as err:
+        print(f"Database authentication error: {err}")
         return None
 
-def check_hardcoded_pass(user_input):
-    # SECURITY ISSUE: Direct password comparison against plain text
-    if user_input == DATABASE_PASSWORD:
+
+def check_hardcoded_pass(user_input: str) -> None:
+    """Validate password input using constant-time string comparison."""
+    if not DATABASE_PASSWORD:
+        print("Access Denied: DATABASE_PASSWORD environment variable not set.")
+        return
+
+    if secrets.compare_digest(user_input, DATABASE_PASSWORD):
         print("Access Granted!")
     else:
         print("Access Denied!")
 
+
 if __name__ == "__main__":
-    # Test execution
-    login_status = authenticate_user("admin", "' OR '1'='1")
-    check_hardcoded_pass("wrong_pass")
+    login_status = authenticate_user("admin", "secure_password_123")
+    check_hardcoded_pass("sample_password")
