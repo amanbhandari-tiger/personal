@@ -47,10 +47,10 @@ def main():
         "X-Title": "Automated AI Code Reviewer",
     }
 
-    # Payload with OpenRouter server-side fallback models array
+    # Payload with curated non-reasoning fallback models
     payload = {
-        "model": "google/gemma-4-31b-it:free",  # Required by API: Primary model
-        "models": [  # Optional: Fallback models if primary fails
+        "model": "google/gemma-4-31b-it:free",
+        "models": [
             "nvidia/nemotron-3.5-lightning:free",
             "meta-llama/llama-3.2-3b-instruct:free",
         ],
@@ -60,6 +60,7 @@ def main():
                 "content": (
                     "You are an expert static analyzer following skill.md strictly. "
                     "Output ONLY the final raw markdown code review report. "
+                    "DO NOT output any internal thinking processes or reasoning logs. "
                     "DO NOT use tool calls, function calls, or special tags like <|tool_call_start|>. "
                     "Provide the markdown text directly."
                 ),
